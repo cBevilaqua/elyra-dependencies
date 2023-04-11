@@ -21,7 +21,6 @@ import os
 import subprocess
 import sys
 import time
-import json
 from typing import Any
 from typing import Optional
 from typing import Type
@@ -231,11 +230,6 @@ class NotebookFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the Notebook and upload results to object storage"""
-        ctx_json = json.dumps(context)
-        logger.info("ctx")
-        logger.info(ctx_json)
-        # for key, value in ctx_json.items():
-        #    os.environ["DAG_RUN__CONF_" + key.upper()] = value
         notebook = os.path.basename(self.filepath)
         notebook_name = notebook.replace(".ipynb", "")
         notebook_output = notebook_name + "-output.ipynb"
@@ -296,11 +290,6 @@ class PythonFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the Python script and upload results to object storage"""
-        ctx_json = json.dumps(context)
-        logger.info(ctx)
-        logger.info(ctx_json)
-        # for key, value in ctx_json.items():
-        #    os.environ["DAG_RUN__CONF_" + key.upper()] = value
         python_script = os.path.basename(self.filepath)
         python_script_name = python_script.replace(".py", "")
         python_script_output = python_script_name + ".log"
@@ -338,11 +327,6 @@ class RFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the R script and upload results to object storage"""
-        ctx_json = json.dumps(context)
-        logger.info("ctx")
-        logger.info(ctx_json)
-        # for key, value in ctx_json.items():
-        #    os.environ["DAG_RUN__CONF_" + key.upper()] = value
         r_script = os.path.basename(self.filepath)
         r_script_name = r_script.replace(".r", "")
         r_script_output = r_script_name + ".log"
@@ -587,8 +571,9 @@ def main():
     )
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
-    logger.info("INPUT PARAMS ARE::: ")
-    logger.info(str(input_params))
+    logger.info("ENV VARS::: ")
+    for name, value in os.environ.items():
+        logger.info("{0}: {1}".format(name, value))
     OpUtil.log_operation_info("starting operation")
     t0 = time.time()
     OpUtil.package_install()
