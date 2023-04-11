@@ -571,7 +571,7 @@ def main():
     )
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
-    logger.info("ENV VARS::: ")
+    logger.info("ENV VARS::::::::::::::::::::::::::::::::::::::::: ")
     for name, value in os.environ.items():
         logger.info("{0}: {1}".format(name, value))
     OpUtil.log_operation_info("starting operation")
