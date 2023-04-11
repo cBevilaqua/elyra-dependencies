@@ -231,7 +231,7 @@ class NotebookFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the Notebook and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
+        ctx_json = json.dumps(context)
         for key, value in ctx_json.items():
             os.environ["DAG_RUN__CONF_" + key.upper()] = value
         notebook = os.path.basename(self.filepath)
@@ -294,7 +294,7 @@ class PythonFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the Python script and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
+        ctx_json = json.dumps(context)
         for key, value in ctx_json.items():
             os.environ["DAG_RUN__CONF_" + key.upper()] = value
         python_script = os.path.basename(self.filepath)
@@ -334,7 +334,7 @@ class RFileOp(FileOpBase):
 
     def execute(self, **context) -> None:
         """Execute the R script and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
+        ctx_json = json.dumps(context)
         for key, value in ctx_json.items():
             os.environ["DAG_RUN__CONF_" + key.upper()] = value
         r_script = os.path.basename(self.filepath)
