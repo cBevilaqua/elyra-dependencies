@@ -21,7 +21,6 @@ import os
 import subprocess
 import sys
 import time
-import json
 from typing import Any
 from typing import Optional
 from typing import Type
@@ -83,13 +82,9 @@ class FileOpBase(ABC):
                 access_key=self.input_params.get("cos-user"),
                 secret_key=self.input_params.get("cos-password"),
             )
-        elif (
-            "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ
-        ):
+        elif "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
             cred_provider = providers.EnvAWSProvider()
-        elif (
-            "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
-        ):
+        elif "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ:
             cred_provider = providers.IamAwsProvider()
         else:
             raise RuntimeError(
@@ -98,16 +93,12 @@ class FileOpBase(ABC):
             )
 
         # get minio client
-        self.cos_client = minio.Minio(
-            self.cos_endpoint.netloc, secure=self.secure, credentials=cred_provider
-        )
+        self.cos_client = minio.Minio(self.cos_endpoint.netloc, secure=self.secure, credentials=cred_provider)
 
     @abstractmethod
     def execute(self) -> None:
         """Execute the operation relative to derived class"""
-        raise NotImplementedError(
-            "Method 'execute()' must be implemented by subclasses!"
-        )
+        raise NotImplementedError("Method 'execute()' must be implemented by subclasses!")
 
     def process_dependencies(self) -> None:
         """Process dependencies
@@ -170,20 +161,13 @@ class FileOpBase(ABC):
 
         object_to_get = self.get_object_storage_filename(file_to_get)
         t0 = time.time()
-        self.cos_client.fget_object(
-            bucket_name=self.cos_bucket,
-            object_name=object_to_get,
-            file_path=file_to_get,
-        )
+        self.cos_client.fget_object(bucket_name=self.cos_bucket, object_name=object_to_get, file_path=file_to_get)
         duration = time.time() - t0
         OpUtil.log_operation_info(
-            f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}",
-            duration,
+            f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}", duration
         )
 
-    def put_file_to_object_storage(
-        self, file_to_upload: str, object_name: Optional[str] = None
-    ) -> None:
+    def put_file_to_object_storage(self, file_to_upload: str, object_name: Optional[str] = None) -> None:
         """Utility function to put files into an object storage
 
         :param file_to_upload: filename
@@ -196,15 +180,10 @@ class FileOpBase(ABC):
 
         object_to_upload = self.get_object_storage_filename(object_to_upload)
         t0 = time.time()
-        self.cos_client.fput_object(
-            bucket_name=self.cos_bucket,
-            object_name=object_to_upload,
-            file_path=file_to_upload,
-        )
+        self.cos_client.fput_object(bucket_name=self.cos_bucket, object_name=object_to_upload, file_path=file_to_upload)
         duration = time.time() - t0
         OpUtil.log_operation_info(
-            f"uploaded {file_to_upload} to bucket: {self.cos_bucket} object: {object_to_upload}",
-            duration,
+            f"uploaded {file_to_upload} to bucket: {self.cos_bucket} object: {object_to_upload}", duration
         )
 
     def has_wildcard(self, filename):
@@ -229,20 +208,15 @@ class FileOpBase(ABC):
 class NotebookFileOp(FileOpBase):
     """Perform Notebook File Operation"""
 
-    def execute(self, **context) -> None:
+    def execute(self) -> None:
         """Execute the Notebook and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
-        for key, value in ctx_json.items():
-            os.environ["DAG_RUN__CONF_" + key.upper()] = value
         notebook = os.path.basename(self.filepath)
         notebook_name = notebook.replace(".ipynb", "")
         notebook_output = notebook_name + "-output.ipynb"
         notebook_html = notebook_name + ".html"
 
         try:
-            OpUtil.log_operation_info(
-                f"executing notebook using 'papermill {notebook} {notebook_output}'"
-            )
+            OpUtil.log_operation_info(f"executing notebook using 'papermill {notebook} {notebook_output}'")
             t0 = time.time()
             # Really hate to do this but have to invoke Papermill via library as workaround
             import papermill
@@ -292,28 +266,19 @@ class NotebookFileOp(FileOpBase):
 class PythonFileOp(FileOpBase):
     """Perform Python File Operation"""
 
-    def execute(self, **context) -> None:
+    def execute(self) -> None:
         """Execute the Python script and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
-        for key, value in ctx_json.items():
-            os.environ["DAG_RUN__CONF_" + key.upper()] = value
         python_script = os.path.basename(self.filepath)
         python_script_name = python_script.replace(".py", "")
         python_script_output = python_script_name + ".log"
 
         try:
             OpUtil.log_operation_info(
-                f"executing python script using "
-                f"'python3 {python_script}' to '{python_script_output}'"
+                f"executing python script using " f"'python3 {python_script}' to '{python_script_output}'"
             )
             t0 = time.time()
             with open(python_script_output, "w") as log_file:
-                subprocess.run(
-                    ["python3", python_script],
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                    check=True,
-                )
+                subprocess.run(["python3", python_script], stdout=log_file, stderr=subprocess.STDOUT, check=True)
 
             duration = time.time() - t0
             OpUtil.log_operation_info("python script execution completed", duration)
@@ -332,28 +297,17 @@ class PythonFileOp(FileOpBase):
 class RFileOp(FileOpBase):
     """Perform R File Operation"""
 
-    def execute(self, **context) -> None:
+    def execute(self) -> None:
         """Execute the R script and upload results to object storage"""
-        ctx_json = json.dumps(context["dag_run"])
-        for key, value in ctx_json.items():
-            os.environ["DAG_RUN__CONF_" + key.upper()] = value
         r_script = os.path.basename(self.filepath)
         r_script_name = r_script.replace(".r", "")
         r_script_output = r_script_name + ".log"
 
         try:
-            OpUtil.log_operation_info(
-                f"executing R script using "
-                f"'Rscript {r_script}' to '{r_script_output}'"
-            )
+            OpUtil.log_operation_info(f"executing R script using " f"'Rscript {r_script}' to '{r_script_output}'")
             t0 = time.time()
             with open(r_script_output, "w") as log_file:
-                subprocess.run(
-                    ["Rscript", r_script],
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                    check=True,
-                )
+                subprocess.run(["Rscript", r_script], stdout=log_file, stderr=subprocess.STDOUT, check=True)
 
             duration = time.time() - t0
             OpUtil.log_operation_info("R script execution completed", duration)
@@ -395,17 +349,13 @@ class OpUtil(object):
                         f"{current_packages[package]}. This may conflict with the required "
                         f"version: {ver} . Skipping..."
                     )
-                elif isinstance(
-                    version.parse(current_packages[package]), version.LegacyVersion
-                ):
+                elif isinstance(version.parse(current_packages[package]), version.LegacyVersion):
                     logger.warning(
                         f"WARNING: Package '{package}' found with unsupported Legacy version "
                         f"scheme {current_packages[package]} already installed. Skipping..."
                     )
                 elif version.parse(ver) > version.parse(current_packages[package]):
-                    logger.info(
-                        f"Updating {package} package from version {current_packages[package]} to {ver}..."
-                    )
+                    logger.info(f"Updating {package} package from version {current_packages[package]} to {ver}...")
                     to_install_list.append(f"{package}=={ver}")
                 elif version.parse(ver) < version.parse(current_packages[package]):
                     logger.info(
@@ -413,15 +363,11 @@ class OpUtil(object):
                         f"already installed. Skipping..."
                     )
             else:
-                logger.info(
-                    f"Package not found. Installing {package} package with version {ver}..."
-                )
+                logger.info(f"Package not found. Installing {package} package with version {ver}...")
                 to_install_list.append(f"{package}=={ver}")
 
         if to_install_list:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install"] + to_install_list, check=True
-            )
+            subprocess.run([sys.executable, "-m", "pip", "install"] + to_install_list, check=True)
 
         subprocess.run([sys.executable, "-m", "pip", "freeze"])
         duration = time.time() - t0
@@ -445,28 +391,16 @@ class OpUtil(object):
             for line in fh:
                 if line[0] != "#":
                     if " @ " in line:
-                        package_name, package_version = line.strip("\n").split(
-                            sep=" @ "
-                        )
+                        package_name, package_version = line.strip("\n").split(sep=" @ ")
                     elif "===" in line:
-                        package_name, package_version = line.strip("\n").split(
-                            sep="==="
-                        )
+                        package_name, package_version = line.strip("\n").split(sep="===")
                     elif "==" in line:
                         package_name, package_version = line.strip("\n").split(sep="==")
                     elif line.startswith("-e ") or line.startswith("--editable "):
-                        package_name = (
-                            line.strip("\n")
-                            .replace("-e ", "")
-                            .replace("--editable ", "")
-                        )
-                        if (
-                            "#egg=" in package_name
-                        ):  # editable package from version control system
+                        package_name = line.strip("\n").replace("-e ", "").replace("--editable ", "")
+                        if "#egg=" in package_name:  # editable package from version control system
                             package_name = package_name.split("=")[-1]
-                        elif (
-                            "/" in package_name
-                        ):  # editable package from local directory
+                        elif "/" in package_name:  # editable package from local directory
                             package_name = os.path.basename(package_name)
                         package_version = None
                     else:
@@ -486,18 +420,10 @@ class OpUtil(object):
         logger.debug("Parsing Arguments.....")
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "-e",
-            "--cos-endpoint",
-            dest="cos-endpoint",
-            help="Cloud object storage endpoint",
-            required=True,
+            "-e", "--cos-endpoint", dest="cos-endpoint", help="Cloud object storage endpoint", required=True
         )
         parser.add_argument(
-            "-b",
-            "--cos-bucket",
-            dest="cos-bucket",
-            help="Cloud object storage bucket to use",
-            required=True,
+            "-b", "--cos-bucket", dest="cos-bucket", help="Cloud object storage bucket to use", required=True
         )
         parser.add_argument(
             "-d",
@@ -520,38 +446,20 @@ class OpUtil(object):
             help="Pipeline name",
             required=True,
         )
-        parser.add_argument(
-            "-f", "--file", dest="filepath", help="File to execute", required=True
-        )
-        parser.add_argument(
-            "-o",
-            "--outputs",
-            dest="outputs",
-            help="Files to output to object store",
-            required=False,
-        )
-        parser.add_argument(
-            "-i",
-            "--inputs",
-            dest="inputs",
-            help="Files to pull in from parent node",
-            required=False,
-        )
+        parser.add_argument("-f", "--file", dest="filepath", help="File to execute", required=True)
+        parser.add_argument("-o", "--outputs", dest="outputs", help="Files to output to object store", required=False)
+        parser.add_argument("-i", "--inputs", dest="inputs", help="Files to pull in from parent node", required=False)
         parsed_args = vars(parser.parse_args(args))
 
         # set pipeline name as global
         pipeline_name = parsed_args.get("pipeline-name")
         # operation/node name is the basename of the non-suffixed filepath, set as global
-        operation_name = os.path.basename(
-            os.path.splitext(parsed_args.get("filepath"))[0]
-        )
+        operation_name = os.path.basename(os.path.splitext(parsed_args.get("filepath"))[0])
 
         return parsed_args
 
     @classmethod
-    def log_operation_info(
-        cls, action_clause: str, duration_secs: Optional[float] = None
-    ) -> None:
+    def log_operation_info(cls, action_clause: str, duration_secs: Optional[float] = None) -> None:
         """Produces a formatted log INFO message used entirely for support purposes.
 
         This method is intended to be called for any entries that should be captured across aggregated
@@ -567,17 +475,13 @@ class OpUtil(object):
         global pipeline_name, operation_name
         if enable_pipeline_info:
             duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
-            logger.info(
-                f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}"
-            )
+            logger.info(f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}")
 
 
 def main():
     # Configure logger format, level
     logging.basicConfig(
-        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s",
-        datefmt="%H:%M:%S",
-        level=logging.INFO,
+        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s", datefmt="%H:%M:%S", level=logging.INFO
     )
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
